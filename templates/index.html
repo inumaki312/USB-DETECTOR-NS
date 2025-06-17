@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USB DETECTION DASHBOARD</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/USB.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/USB.png') }}">
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1><i class="fas fa-shield-alt"></i> USB Security Dashboard</h1>
+                <div class="status-badge">
+                    <span class="dot"></span>
+                    Active Protection
+                </div>
+            </div>
+            <p class="timestamp"><i class="fas fa-clock"></i> Last Scan: <span id="timestamp">{{ timestamp }}</span></p>
+        </header>
+
+        <main>
+            <div class="dashboard-grid">
+                <!-- Security Status Card -->
+                <div class="dashboard-card status-overview">
+                    <h2><i class="fas fa-chart-pie"></i> Security Overview</h2>
+                    <div class="status-stats">
+                        <div class="stat-item">
+                            <span class="stat-number" id="device-count">{{ devices.count('\n') // 4 }}</span>
+                            <span class="stat-label">Connected Devices</span>
+                        </div>
+                        <div class="stat-item {% if malicious %}warning{% endif %}" id="warning-stat">
+                            <span class="stat-number" id="malicious-count">{{ malicious|length }}</span>
+                            <span class="stat-label">Suspicious Devices</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Define SVG icon template -->
+                <svg style="display: none;">
+                    <symbol id="usb-icon" viewBox="0 0 24 24">
+                        <path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2S4.8 7.79 4.8 9c0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.22.99 2.2 2.2 2.2s2.2-.98 2.2-2.2c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/>
+                    </symbol>
+                </svg>
+
+                <!-- Connected Devices Card -->
+                <div class="dashboard-card devices-list-card">
+                    <h2><i class="fas fa-usb"></i> Connected USB Devices</h2>
+                    <div class="devices-list" id="devices-list">
+                        {% set ns = namespace(name='', status='') %}
+                        {% for line in devices.splitlines() %}
+                            {% if 'FriendlyName' in line %}
+                                {% set ns.name = line.split(': ')[1] %}
+                            {% endif %}
+                            {% if 'Status' in line %}
+                                {% set ns.status = line.split(': ')[1] %}
+                            {% endif %}
+                            {% if line.strip() == '' and ns.name %}
+                                <div class="device-item {% if ns.status == 'Unknown' %}warning{% endif %}">
+                                    <div class="device-icon">
+                                        <svg><use href="#usb-icon"/></svg>
+                                    </div>
+                                    <div class="device-info">
+                                        <span class="device-name">{{ ns.name }}</span>
+                                        <span class="device-status">
+                                            <span class="status-dot"></span>
+                                            Status: {{ ns.status or 'Unknown' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% set ns.name = '' %}
+                                {% set ns.status = '' %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Alerts Card -->
+                <div class="dashboard-card alert-card" id="alert-section" style="display: {% if malicious %}block{% else %}none{% endif %}">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Security Alerts</h2>
+                    <div class="alert-content">
+                        <p class="alert-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            Suspicious USB devices detected! These devices match known malicious patterns.
+                        </p>
+                        <div class="malicious-list" id="malicious-list">
+                            {% for device in malicious %}
+                            <div class="malicious-item">
+                                <i class="fas fa-ban"></i>
+                                <div class="malicious-info">
+                                    <span class="device-name">{{ device.split(': ')[1] }}</span>
+                                    <span class="device-id">Device ID: {{ device.split(': ')[0] }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="alert-actions">
+                            <a href="{{ url_for('unlock') }}" class="action-button">
+                                <i class="fas fa-shield-alt"></i>
+                                Manage Security
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <a href="{{ url_for('unlock') }}" class="action-button primary">
+                    <i class="fas fa-lock"></i>
+                    Security Controls
+                </a>
+                <button onclick="manualRefresh()" class="action-button secondary">
+                    <i class="fas fa-sync"></i>
+                    Refresh Status
+                </button>
+            </section>
+        </main>
+
+        <footer>
+            <p><i class="fas fa-info-circle"></i> USB Protection System - A Project By F23-B | GUI by inumaki</p>
+        </footer>
+    </div>
+
+    <script>
+        // Function to create a device item HTML
+        function createDeviceItem(name, status) {
+            return `
+                <div class="device-item ${status === 'Unknown' ? 'warning' : ''}">
+                    <div class="device-icon">
+                        <svg><use href="#usb-icon"/></svg>
+                    </div>
+                    <div class="device-info">
+                        <span class="device-name">${name}</span>
+                        <span class="device-status">
+                            <span class="status-dot"></span>
+                            Status: ${status || 'Unknown'}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to create a malicious item HTML
+        function createMaliciousItem(device) {
+            const [id, name] = device.split(': ');
+            return `
+                <div class="malicious-item">
+                    <i class="fas fa-ban"></i>
+                    <div class="malicious-info">
+                        <span class="device-name">${name}</span>
+                        <span class="device-id">Device ID: ${id}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to update the dashboard
+        function updateDashboard() {
+            fetch('/update_devices')
+                .then(response => response.json())
+                .then(data => {
+                    // Update timestamp
+                    document.getElementById('timestamp').textContent = data.timestamp;
+                    
+                    // Update device count
+                    document.getElementById('device-count').textContent = data.device_count;
+                    
+                    // Update malicious count
+                    document.getElementById('malicious-count').textContent = data.malicious_count;
+                    document.getElementById('warning-stat').classList.toggle('warning', data.malicious_count > 0);
+                    
+                    // Update devices list
+                    const devicesList = document.getElementById('devices-list');
+                    let deviceItems = '';
+                    let currentDevice = { name: '', status: '' };
+                    
+                    data.devices.split('\n').forEach(line => {
+                        if (line.includes('FriendlyName')) {
+                            currentDevice.name = line.split(': ')[1];
+                        } else if (line.includes('Status')) {
+                            currentDevice.status = line.split(': ')[1];
+                        } else if (line.trim() === '' && currentDevice.name) {
+                            deviceItems += createDeviceItem(currentDevice.name, currentDevice.status);
+                            currentDevice = { name: '', status: '' };
+                        }
+                    });
+                    devicesList.innerHTML = deviceItems;
+                    
+                    // Update malicious list
+                    const maliciousList = document.getElementById('malicious-list');
+                    const alertSection = document.getElementById('alert-section');
+                    if (data.malicious && data.malicious.length > 0) {
+                        maliciousList.innerHTML = data.malicious.map(device => createMaliciousItem(device)).join('');
+                        alertSection.style.display = 'block';
+                    } else {
+                        alertSection.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error updating dashboard:', error));
+        }
+
+        // Function for manual refresh
+        function manualRefresh() {
+            const button = document.querySelector('.action-button.secondary');
+            const icon = button.querySelector('.fa-sync');
+            icon.classList.add('fa-spin');
+            updateDashboard();
+            setTimeout(() => icon.classList.remove('fa-spin'), 1000);
+        }
+
+        // Update every 5 seconds instead of 2 seconds
+        setInterval(updateDashboard, 5000);
+
+        // Initial update
+        updateDashboard();
+    </script>
+</body>
+</html> 

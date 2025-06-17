@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Controls - USB Protection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1><i class="fas fa-shield-alt"></i> Security Controls</h1>
+                <a href="{{ url_for('home') }}" class="action-button secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Dashboard
+                </a>
+            </div>
+        </header>
+
+        <main>
+            <div class="dashboard-card unlock-card">
+                {% if not authenticated %}
+                <div class="unlock-header">
+                    <i class="fas fa-lock security-icon"></i>
+                    <h2>Administrator Access Required</h2>
+                    <p class="security-message">
+                        This area is protected. Enter your administrator password to manage USB security settings.
+                    </p>
+                </div>
+
+                <form class="unlock-form" method="POST">
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-key"></i>
+                            Security Password
+                        </label>
+                        <input type="password" 
+                               id="password" 
+                               name="password" 
+                               placeholder="Enter administrator password"
+                               required
+                               autocomplete="current-password">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="action-button primary">
+                            <i class="fas fa-unlock"></i>
+                            Unlock Security Controls
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="control-header">
+                    <i class="fas fa-shield-alt security-icon"></i>
+                    <h2>USB Port Controls</h2>
+                    <p class="security-message">
+                        Manage USB port access and security settings below.
+                    </p>
+                    <div class="session-timer">
+                        <i class="fas fa-clock"></i>
+                        Session expires in: <span id="countdown">{{ timeout }}</span> seconds
+                    </div>
+                </div>
+
+                <div class="port-controls">
+                    <div class="control-status">
+                        <span class="status-label">Current Status:</span>
+                        <span class="status-value {% if ports_enabled %}enabled{% else %}disabled{% endif %}">
+                            {% if ports_enabled %}
+                                <i class="fas fa-check-circle"></i> USB Ports Enabled
+                            {% else %}
+                                <i class="fas fa-times-circle"></i> USB Ports Disabled
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="control-buttons">
+                        <form method="POST" action="{{ url_for('toggle_ports') }}" class="control-form">
+                            <input type="hidden" name="action" value="{% if ports_enabled %}disable{% else %}enable{% endif %}">
+                            <button type="submit" class="action-button {% if ports_enabled %}warning{% else %}success{% endif %}">
+                                <i class="fas {% if ports_enabled %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
+                                {% if ports_enabled %}
+                                    Disable USB Ports
+                                {% else %}
+                                    Enable USB Ports
+                                {% endif %}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+
+        <footer>
+            <p><i class="fas fa-info-circle"></i> USB Protection System - A Project By F23-B | GUI by inumaki</p>
+        </footer>
+    </div>
+
+    <style>
+        .unlock-card {
+            max-width: 500px;
+            margin: 2rem auto;
+        }
+
+        .unlock-header, .control-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .security-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .security-message {
+            color: var(--text-light);
+            margin-top: 1rem;
+        }
+
+        .unlock-form {
+            background-color: rgba(13, 28, 48, 0.4);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(0, 255, 136, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(13, 28, 48, 0.6);
+            border: 2px solid rgba(0, 255, 136, 0.1);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: var(--neon-shadow);
+        }
+
+        .form-actions {
+            text-align: center;
+        }
+
+        .form-actions .action-button {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .port-controls {
+            background: rgba(13, 28, 48, 0.4);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(0, 255, 136, 0.1);
+        }
+
+        .control-status {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(13, 28, 48, 0.6);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(0, 255, 136, 0.1);
+        }
+
+        .status-label {
+            display: block;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-value {
+            font-size: 1.25rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .status-value.enabled {
+            color: var(--primary-color);
+        }
+
+        .status-value.disabled {
+            color: #ff3d00;
+        }
+
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .action-button.warning {
+            background: rgba(255, 61, 0, 0.1);
+            border-color: rgba(255, 61, 0, 0.2);
+            color: #ff3d00;
+        }
+
+        .action-button.success {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: rgba(0, 255, 136, 0.2);
+            color: var(--primary-color);
+        }
+
+        .action-button.warning:hover {
+            background: rgba(255, 61, 0, 0.2);
+            box-shadow: 0 0 20px rgba(255, 61, 0, 0.2);
+        }
+
+        .action-button.success:hover {
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: var(--neon-shadow);
+        }
+
+        .session-timer {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 61, 0, 0.1);
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: #ff3d00;
+            animation: pulse-warning 2s infinite;
+        }
+
+        @keyframes pulse-warning {
+            0% {
+                background: rgba(255, 61, 0, 0.1);
+            }
+            50% {
+                background: rgba(255, 61, 0, 0.2);
+            }
+            100% {
+                background: rgba(255, 61, 0, 0.1);
+            }
+        }
+    </style>
+
+    {% if authenticated %}
+    <script>
+        let countdown = {{ timeout }};
+        const countdownElement = document.getElementById('countdown');
+
+        function updateTimer() {
+            fetch('/check_session')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.authenticated) {
+                        window.location.href = '/unlock';
+                        return;
+                    }
+                    countdown = data.time_left;
+                    countdownElement.textContent = countdown;
+                    
+                    if (countdown <= 10) {
+                        countdownElement.style.color = '#ff3d00';
+                    }
+                    
+                    if (countdown <= 0) {
+                        window.location.href = '/unlock';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking session:', error);
+                });
+        }
+
+        // Update timer every second
+        const timerInterval = setInterval(updateTimer, 1000);
+
+        // Cleanup interval when leaving the page
+        window.addEventListener('beforeunload', () => {
+            clearInterval(timerInterval);
+        });
+    </script>
+    {% endif %}
+</body>
+</html> 
